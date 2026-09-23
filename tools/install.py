@@ -84,7 +84,7 @@ ENVS = {
     "radio": "Bluetooth Low Energy (BLE)",
     "device_name": "teslapi-esp32-ble",
     "app_label": "ESP32 BLE",
-    "tested": False,
+    "tested": True,
   },
 }
 TEST_PATTERN_ENV = "esp32-test-pattern"
@@ -1009,9 +1009,7 @@ class Installer:
       return
 
     self.check_port_access(self.port)
-    if self.env:
-      ui.ok("Firmware: %s (chosen with --env)" % self.env)
-    else:
+    if not self.env:
       self.detect_chip()
     self.explain_env()
 
@@ -1054,8 +1052,8 @@ class Installer:
               "Use --env esp32-ble for BLE." % self.why_not_short())
       return options[0]
     ui.info("This board can talk to the phone in two ways - pick the one you'll choose in the TeslaLED app:")
-    labels = ["Bluetooth Classic - \"%s\" in the app (recommended, tested)" % ENVS["esp32-classic"]["app_label"],
-              "BLE - \"%s\" in the app, no pairing needed (not tested on a real board yet)" % ENVS["esp32-ble"]["app_label"]]
+    labels = ["Bluetooth Classic - \"%s\" in the app (recommended)" % ENVS["esp32-classic"]["app_label"],
+              "BLE - \"%s\" in the app, no pairing needed" % ENVS["esp32-ble"]["app_label"]]
     return options[ui.choose("Connection", labels)]
 
   def why_not_short(self):

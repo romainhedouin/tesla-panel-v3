@@ -119,7 +119,7 @@ Everything, including the full PlatformIO/esptool output, goes to
 | Environment | Board | Transport | Device name | Status |
 |---|---|---|---|---|
 | `esp32-classic` | ESP32-DevKitC V4 | Bluetooth Classic (SPP) | `teslapi-esp32` | **Works end to end** (adapter rev 2.2, 64x32 panel, Pixel 9) |
-| `esp32-ble` | ESP32-DevKitC V4 | BLE GATT | `teslapi-esp32-ble` | Compiles - not yet run on hardware |
+| `esp32-ble` | ESP32-DevKitC V4 | BLE GATT | `teslapi-esp32-ble` | **Works end to end** (adapter rev 2.2, Pixel 9) |
 | `esp32-test-pattern` | ESP32-DevKitC V4 | none | - | Static diagnostic pattern, quickest wiring/timing check |
 | `native` | host | none | - | Protocol unit tests |
 
