@@ -41,7 +41,7 @@ are safe. The full output goes to `install.log`.
 
 ## Bill of materials
 
-- **ESP32-DevKitC V4** ([this one](https://www.amazon.fr/dp/B0F65G3V81)).
+- **ESP32-DevKitC V4** ([I bought this set of 2](https://www.amazon.fr/dp/B0F65G3V81)).
   Other ESP32 variants (S2, S3, C3...) aren't supported.
 - **HUB75 adapter**: seengreat
   ["RGB Matrix Adapter Board (E)"](https://www.amazon.fr/dp/B0FVGCF1RW),
