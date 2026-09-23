@@ -255,8 +255,8 @@ platformio.ini            environments; build_src_filter picks the entry point
 ```
 
 The panel side is built on
-[ESP32-HUB75-MatrixPanel-DMA](https://github.com/mrcodetastic/ESP32-HUB75-MatrixPanel-DMA)
-and Adafruit GFX. With PlatformIO installed (`pip install platformio`, or
+[ESP32-HUB75-MatrixPanel-DMA](https://github.com/mrcodetastic/ESP32-HUB75-MatrixPanel-DMA),
+built with `NO_GFX` (no Adafruit GFX dependency). With PlatformIO installed (`pip install platformio`, or
 `.venv/bin/pio` after one installer run):
 
 ```

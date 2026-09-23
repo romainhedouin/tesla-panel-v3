@@ -26,8 +26,14 @@ void setup() {
   display->clearScreen();
 
   // Left half: white 1px vertical lines every 4 columns, plus a white border.
-  for (int x = 0; x < 32; x += 4) display->drawFastVLine(x, 0, 32, display->color565(255, 255, 255));
-  display->drawRect(0, 0, 64, 32, display->color565(255, 255, 255));
+  for (int y = 0; y < 32; y++) {
+    for (int x = 0; x < 32; x += 4) display->drawPixelRGB888(x, y, 255, 255, 255);
+    display->drawPixelRGB888(63, y, 255, 255, 255);
+  }
+  for (int x = 0; x < 64; x++) {
+    display->drawPixelRGB888(x, 0, 255, 255, 255);
+    display->drawPixelRGB888(x, 31, 255, 255, 255);
+  }
   // Right half: rows of isolated pure red, green, blue pixels, 2px apart.
   const uint8_t rgb[3][3] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}};
   for (int c = 0; c < 3; c++) {
