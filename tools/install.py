@@ -78,9 +78,9 @@ ENVS = {
     "app_label": "ESP32 Standard",
     "tested": True,
   },
-  "esp32-s3-ble": {
-    "chip": "ESP32-S3",
-    "board": "ESP32-S3-DevKitC-1",
+  "esp32-ble": {
+    "chip": "ESP32",
+    "board": "ESP32-DevKitC V4",
     "radio": "Bluetooth Low Energy (BLE)",
     "device_name": "teslapi-esp32-ble",
     "app_label": "ESP32 BLE",
@@ -636,8 +636,6 @@ class Installer:
       return "add --test-pattern to check the wiring first"
     if self.args.build_only:
       return "--build-only"
-    if self.env == "esp32-s3-ble":
-      return "the test pattern is only built for the original ESP32"
     return "dry run" if self.args.dry_run else None
 
   def skip_flash(self):
@@ -1007,7 +1005,7 @@ class Installer:
       if self.env:
         self.explain_env()
       else:
-        ui.info("Dry run: not connecting to the board, so the chip type (ESP32 or ESP32-S3) isn't detected.")
+        ui.info("Dry run: not connecting to the board, so the chip type isn't checked.")
       return
 
     self.check_port_access(self.port)
@@ -1031,21 +1029,37 @@ class Installer:
       self.explain_connection_failure(text)
       if not ui.ask_yes_no("Try again?", default=True, noninteractive=False):
         raise Abort("Couldn't identify the board.",
-                    "If you know the chip, you can skip detection with --env esp32-classic (ESP32) or "
-                    "--env esp32-s3-ble (ESP32-S3).")
+                    "If you're sure it's an ESP32, you can skip detection with --env esp32-classic "
+                    "or --env esp32-ble.")
     self.chip = match.group(1)
     mac = re.search(r"MAC:\s*([0-9a-fA-F:]{17})", text)
     self.chip_mac = mac.group(1).upper() if mac else None
     chip = self.chip.upper()
-    if chip.startswith("ESP32-S3"):
-      self.env = "esp32-s3-ble"
-    elif re.match(r"ESP32($|-D|-U|-S0|-PICO)", chip):  # the original ESP32's package variants
-      self.env = "esp32-classic"
+    if re.match(r"ESP32($|-D|-U|-S0|-PICO)", chip):  # the original ESP32's package variants
+      self.env = self.choose_esp32_radio()
     else:
       raise Abort("This board has an %s chip, which this firmware doesn't support." % self.chip,
-                  "Supported: the original ESP32 (e.g. ESP32-DevKitC V4) and the ESP32-S3 "
-                  "(ESP32-S3-DevKitC-1). The panel driver needs one of those two.")
+                  "Only the original ESP32 (e.g. ESP32-DevKitC V4) is supported: the pin mapping "
+                  "and Bluetooth setup are specific to it.")
     ui.ok("Chip: %s" % self.chip)
+
+  def choose_esp32_radio(self):
+    """The original ESP32 can run either firmware - only the user knows
+    which one their TeslaLED app is set up for."""
+    ui = self.ui
+    ui.ok("Chip: %s" % self.chip)
+    options = ["esp32-classic", "esp32-ble"]
+    if not ui.interactive:
+      ui.info("This board can run Bluetooth Classic or BLE; using Bluetooth Classic (%s). "
+              "Use --env esp32-ble for BLE." % self.why_not_short())
+      return options[0]
+    ui.info("This board can talk to the phone in two ways - pick the one you'll choose in the TeslaLED app:")
+    labels = ["Bluetooth Classic - \"%s\" in the app (recommended, tested)" % ENVS["esp32-classic"]["app_label"],
+              "BLE - \"%s\" in the app, no pairing needed (not tested on a real board yet)" % ENVS["esp32-ble"]["app_label"]]
+    return options[ui.choose("Connection", labels)]
+
+  def why_not_short(self):
+    return self.ui.why_not or "non-interactive"
 
   def explain_env(self):
     info = ENVS[self.env]
@@ -1054,7 +1068,7 @@ class Installer:
     ui.info("In the TeslaLED app you will pick the \"%s\" connection." % info["app_label"])
     if not info["tested"]:
       ui.warn("The %s firmware builds, but hasn't been tested on a real board yet. "
-              "If it misbehaves, please report it." % info["chip"])
+              "If it misbehaves, please report it." % info["radio"])
 
   def explain_connection_failure(self, text):
     ui = self.ui
@@ -1267,9 +1281,6 @@ class Installer:
               "phone's Bluetooth settings - that's normal)")
     ui.info("That doesn't necessarily mean it failed - flashing succeeded. Try unplugging the board and "
             "plugging it back in; the panel should light up and %s." % seen)
-    if self.port_info and self.port_info.get("vid") == 0x303A:
-      ui.info("Your board is plugged in through the ESP32-S3's native USB port; its messages come out on "
-              "the other USB port (labelled UART or COM). Use that one to see them.")
     if lines:
       ui.print("      " + ui.dim("What the board printed:"))
       for line in lines[-15:]:
@@ -1304,7 +1315,7 @@ class Installer:
 
   def print_dry_run(self):
     ui = self.ui
-    env = self.env or "<detected: esp32-classic or esp32-s3-ble>"
+    env = self.env or "<chosen after detection: esp32-classic or esp32-ble>"
     port = self.port or "<port>"
 
     def show(*pio_args):
@@ -1312,7 +1323,7 @@ class Installer:
 
     ui.print()
     ui.print(ui.bold("Dry run - this is what would run next:"))
-    if self.args.test_pattern and not self.args.build_only and self.env != "esp32-s3-ble":
+    if self.args.test_pattern and not self.args.build_only:
       show("run", "-e", TEST_PATTERN_ENV, "-t", "upload", "--upload-port", port)
     show("run", "-e", env)
     if not self.args.build_only:
@@ -1326,7 +1337,7 @@ class Installer:
     address = self.address
     guessed = False
     if not address and self.chip_mac:
-      # The Bluetooth MAC is the chip's base MAC + 2 on both ESP32 and S3.
+      # The ESP32's Bluetooth MAC is its base MAC + 2.
       value = (int(self.chip_mac.replace(":", ""), 16) + 2) & 0xFFFFFFFFFFFF
       address = ":".join("%02X" % ((value >> s) & 0xFF) for s in range(40, -1, -8))
       guessed = True
@@ -1461,7 +1472,7 @@ def serial_helper(argv):
       try:
         chunk = ser.read(256)
       except (serial.SerialException, OSError):
-        # Native USB ports disappear for a moment on reset - reopen.
+        # Some USB ports disappear for a moment on reset - reopen.
         try:
           ser.close()
         except Exception:
@@ -1507,12 +1518,11 @@ def parse_args(argv):
            "\nThe full log of the last run is in install.log.",
     formatter_class=argparse.RawDescriptionHelpFormatter)
   parser.add_argument("--env", choices=sorted(ENVS),
-                      help="which firmware to use instead of detecting it from the chip: esp32-classic "
-                           "(ESP32, Bluetooth Classic) or esp32-s3-ble (ESP32-S3, BLE)")
+                      help="which firmware to flash instead of asking: esp32-classic "
+                           "(Bluetooth Classic, the default) or esp32-ble (BLE)")
   parser.add_argument("--port", help="serial port of the board (e.g. /dev/ttyUSB0, COM3) instead of detecting it")
   parser.add_argument("--test-pattern", action="store_true",
-                      help="first flash a test image to check the panel wiring, then the real firmware "
-                           "(original ESP32 only)")
+                      help="first flash a test image to check the panel wiring, then the real firmware")
   parser.add_argument("-y", "--yes", action="store_true",
                       help="never ask: pick the only board found, fail if a choice is ambiguous")
   parser.add_argument("--verbose", action="store_true", help="also show the full PlatformIO output")

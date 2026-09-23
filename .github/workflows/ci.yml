@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        env: [esp32-classic, esp32-s3-ble, esp32-test-pattern]
+        env: [esp32-classic, esp32-ble, esp32-test-pattern]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

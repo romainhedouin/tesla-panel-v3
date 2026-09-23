@@ -1,5 +1,5 @@
-// Entry point for the ESP32-S3 (BLE only - no classic Bluetooth radio at
-// all on this chip, so BluetoothSerial/SPP isn't an option here). Speaks
+// BLE entry point (esp32-ble) - the alternative to main_classic.cpp's
+// Bluetooth Classic SPP on the same ESP32. Speaks
 // the same logical wire protocol as the classic-ESP32 variant
 // (protocol.h), but framed differently: BLE GATT writes/notifies are
 // capped by the negotiated MTU (a handful of hundred bytes at best), while
@@ -179,11 +179,8 @@ void setup() {
   commandChar->setCallbacks(new CommandCallbacks());
 
   gResponseChar = service->createCharacteristic(kResponseCharUuid, BLECharacteristic::PROPERTY_NOTIFY);
-#if defined(CONFIG_BLUEDROID_ENABLED)
-  // CCCD - required for the client to enable notifications. NimBLE (the
-  // S3's default stack) adds it automatically for notify characteristics.
+  // CCCD - required for the client to enable notifications.
   gResponseChar->addDescriptor(new BLE2902());
-#endif
 
   service->start();
 

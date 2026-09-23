@@ -30,9 +30,11 @@ over to `tools/install.py`, which does the same thing on every OS:
    half-installed.
 3. **Find the board** - lists USB serial ports only; asks if there are
    several.
-4. **Build the firmware** - picks the environment from the chip esptool
-   detects: ESP32 -> `esp32-classic`, ESP32-S3 -> `esp32-s3-ble`.
-5. **Wiring check** (only with `--test-pattern`, original ESP32 only) -
+   Then checks with esptool that it really is an ESP32, and asks which
+   connection you want: Bluetooth Classic (`esp32-classic`, the default
+   and the one used with `--yes`) or BLE (`esp32-ble`).
+4. **Build the firmware** for that environment.
+5. **Wiring check** (only with `--test-pattern`) -
    flashes the test pattern and asks whether you see it.
 6. **Flash the board.**
 7. **Check that it started** - resets the board, reads its boot messages
@@ -49,9 +51,9 @@ Everything, including the full PlatformIO/esptool output, goes to
 
 | Option | Effect |
 |---|---|
-| `--env {esp32-classic,esp32-s3-ble}` | use this firmware instead of detecting it from the chip |
+| `--env {esp32-classic,esp32-ble}` | flash this firmware instead of asking |
 | `--port PORT` | serial port of the board (e.g. `/dev/ttyUSB0`, `COM3`) instead of detecting it |
-| `--test-pattern` | first flash the test pattern to check the panel wiring, then the real firmware (original ESP32 only; skipped on an ESP32-S3) |
+| `--test-pattern` | first flash the test pattern to check the panel wiring, then the real firmware |
 | `-y`, `--yes` | never ask: pick the only board found, fail if a choice is ambiguous |
 | `--verbose` | also show the full PlatformIO output |
 | `--build-only` | build without flashing (with `--env`, no board needed) |
@@ -60,13 +62,10 @@ Everything, including the full PlatformIO/esptool output, goes to
 
 ## Bill of materials
 
-- **ESP32 board**, one of:
-  - [ESP32-DevKitC V4](https://www.espressif.com/en/products/devkits/esp32-devkitc)
-    (original ESP32, Bluetooth Classic) - **recommended**, the only one
-    verified on hardware.
-  - [ESP32-S3-DevKitC-1](https://www.espressif.com/en/products/devkits/esp32-s3-devkitc-1)
-    (BLE only) - untested on hardware, and currently expected not to drive
-    the panel as is (see [Things to know](#things-to-know)).
+- **ESP32 board**: [ESP32-DevKitC V4](https://www.espressif.com/en/products/devkits/esp32-devkitc)
+  (original ESP32 - its radio does both Bluetooth Classic and BLE). Other
+  ESP32 variants (S2, S3, C3...) aren't supported: the pin mapping and
+  Bluetooth setup are specific to this chip.
 - **HUB75 adapter**: seengreat
   ["RGB Matrix Adapter Board (E)"](https://www.amazon.fr/dp/B0FVGCF1RW),
   **rev 2.x** (printed on the board). Rev 1.x uses different pins.
@@ -107,7 +106,7 @@ Everything, including the full PlatformIO/esptool output, goes to
    - **esp32-classic**: pair with **`teslapi-esp32`** in Android's
      Bluetooth settings. Android then says "Can't connect" - that's
      normal, it only means the board has no audio profile.
-   - **esp32-s3-ble**: don't pair it in the settings; the app connects
+   - **esp32-ble**: don't pair it in the settings; the app connects
      directly.
 5. In TeslaLED, tap the transport button in the top bar (it shows PI,
    ESP32 or BLE) -> **ESP32 Standard** (classic) or **ESP32 BLE**, and
@@ -120,7 +119,7 @@ Everything, including the full PlatformIO/esptool output, goes to
 | Environment | Board | Transport | Device name | Status |
 |---|---|---|---|---|
 | `esp32-classic` | ESP32-DevKitC V4 | Bluetooth Classic (SPP) | `teslapi-esp32` | **Works end to end** (adapter rev 2.2, 64x32 panel, Pixel 9) |
-| `esp32-s3-ble` | ESP32-S3-DevKitC-1 | BLE GATT (the S3 has no Classic radio) | `teslapi-esp32-ble` | Compiles only - never run on hardware |
+| `esp32-ble` | ESP32-DevKitC V4 | BLE GATT | `teslapi-esp32-ble` | Compiles - not yet run on hardware |
 | `esp32-test-pattern` | ESP32-DevKitC V4 | none | - | Static diagnostic pattern, quickest wiring/timing check |
 | `native` | host | none | - | Protocol unit tests |
 
@@ -189,10 +188,6 @@ for a single notification.
   defaults, and differs between adapter revisions V1.x and V2.x - check
   the revision printed on the board
   ([seengreat wiki](https://seengreat.com/wiki/186/rgb-matrix-adapter-board-e)).
-  **The S3 build uses the same classic-ESP32 mapping**, which includes
-  GPIOs that are SPI flash/PSRAM pins or don't exist on the ESP32-S3
-  (22-27, 32, 33). It compiles, but needs an S3-specific mapping before it
-  can drive a panel.
 - **Clock phase is flipped** (`clkphase = false` in `src/panel.h`). With
   the library default, white pixels fringed into neighbouring columns
   (colour channels a pixel apart), worst on the bottom half. Solid colours
@@ -205,8 +200,9 @@ for a single notification.
   upgrade blindly. The `BluetoothSerial` deprecation warning at build time
   comes with this core and is expected.
 - **RAM is tight.** Bluetooth crashes on connect if it runs short, so:
-  Bluetooth initialises before the panel, the classic build releases the
-  controller's BLE memory, the panel is single-buffered, and payloads are
+  Bluetooth initialises before the panel, each build releases the controller
+  memory of the radio mode it doesn't use (BLE for classic, Classic for
+  BLE), the panel is single-buffered, and payloads are
   capped at 8KB. Free heap and largest block are printed at boot.
 - **Incoming SPP data bypasses `BluetoothSerial`'s 512-byte queue**, which
   silently drops overflow, and goes into an 8KB stream buffer instead.
@@ -237,8 +233,7 @@ for a single notification.
   while it retries, and close anything else using the port (serial
   monitor, Arduino IDE).
 - **No `[+] Ready` after flashing**: only a warning - the installer shows
-  what the board printed. On an ESP32-S3 plugged in through its native USB
-  port, the messages come out on the other (UART) port.
+  what the board printed.
 - **Anything else**: `install.log` has the full output of the last run.
 
 ## Development
@@ -246,7 +241,7 @@ for a single notification.
 ```
 src/
   main_classic.cpp        esp32-classic entry point (SPP)
-  main_ble.cpp            esp32-s3-ble entry point (BLE GATT)
+  main_ble.cpp            esp32-ble entry point (BLE GATT)
   main_test_pattern.cpp   esp32-test-pattern, no Bluetooth
   protocol.h              wire protocol, transport-agnostic
   panel.h                 HUB75 wrapper, one handler per command
@@ -271,8 +266,7 @@ pio run -e esp32-classic -t upload                     # build and flash
 pio device monitor -b 115200                           # boot/connect/error messages
 ```
 
-Always pass `-e`: there is no `default_envs`, so a bare `pio run` also
-tries the `native` env, which has no firmware sources.
+A bare `pio run` builds `esp32-classic` (`default_envs`).
 
 CI (`.github/workflows/ci.yml`, on push and PR to `master`) runs the native
 tests, builds all three ESP32 environments, and smoke-checks the installer
