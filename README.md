@@ -1,5 +1,7 @@
 # tesla-panel-v3
 
+<img width="1920" height="1445" alt="image" src="https://github.com/user-attachments/assets/6d326fa8-c928-4637-9709-755f334a93fb" />
+
 Firmware for the 64x32 RGB LED panel mounted in the car's rear window. An
 ESP32 on a HUB75 adapter board drives the panel and takes commands over
 Bluetooth from the [TeslaLED](https://github.com/romainhedouin/TeslaLED)
