@@ -1,0 +1,4 @@
+.pio/
+.venv/
+install.log
+__pycache__/

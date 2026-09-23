@@ -1,0 +1,57 @@
+# Host unit tests, firmware builds for every ESP32 environment, and a
+# smoke check of the installer. Nothing here touches hardware.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .pio
+          key: pio-native-${{ hashFiles('platformio.ini') }}
+      - run: pip install "platformio>=6.1,<7"
+      - run: pio test -e native
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [esp32-classic, esp32-s3-ble, esp32-test-pattern]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .pio
+          key: pio-${{ matrix.env }}-${{ hashFiles('platformio.ini') }}
+      - run: pip install "platformio>=6.1,<7"
+      - run: pio run -e ${{ matrix.env }}
+
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m py_compile tools/install.py
+      - run: bash -n install.sh
+      - run: python3 tools/install.py --help
